@@ -1,0 +1,333 @@
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\software\Keil_v5\C51\BIN\C51.EXE main.c COMPACT ROM(COMPACT) OPTIMIZE(8,SPEED) BROWSE DEBUG OBJE
+                    -CTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "MatrixKey.h"
+   3          #include "Delay.h"
+   4          #include "UART.h"
+   5          #include "LCD1602.h"
+   6          #include <string.h>
+   7          #include "DS18B20.h"
+   8          #include <stdio.h>
+   9          #include "Timer0.h"
+  10          #include "AT24C02.h"
+  11          #include <stdlib.h>
+  12          
+  13          #define SIZE 12
+  14          #define LINE2SIZE 94
+  15          
+  16          //P00-P07=>L4-H1  D3-D5=>P37-P35
+  17          
+  18          
+  19          //setting
+  20          sbit D3=P3^7;
+  21          sbit D4=P3^6;
+  22          sbit D5=P3^5;
+  23          
+  24          
+  25          
+  26          
+  27          
+  28          float T;
+  29          char str[6]; 
+  30          
+  31          char cmd[SIZE];
+  32          char num[2];
+  33          int i=0;
+  34          
+  35          
+  36          int  keynumber; 
+  37          char tstr[]="T:";
+  38          char Kstr[]="K:";
+  39          
+  40          
+  41          int convertToInt(const char *str);
+  42          int isrun=1;
+  43          
+  44          //char strline2[LINE2SIZE]="imitate: temperature ";
+  45          //char printfnum[2];
+  46          
+  47          //set温度
+  48          int temperature;
+  49          int humidity;
+  50          
+  51          //char endprint[10];
+  52          char send[5];
+  53          void SetNumber(int t,int h);
+  54          void main(){
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 2   
+
+  55   1        
+  56   1        LCD_Init();
+  57   1        UART_Init();
+  58   1      
+  59   1      
+  60   1        //测试使用
+  61   1      
+  62   1        //写完 需要等5ms(写入时间)
+  63   1        //Delayms(5);
+  64   1      
+  65   1        isrun=AT24C02_ReadByte(1);
+  66   1        
+  67   1      
+  68   1        if(isrun==0)isrun=1;
+  69   1        
+  70   1        if(temperature==0)temperature=30;
+  71   1        if(humidity==0)humidity=10;
+  72   1        
+  73   1      
+  74   1        
+  75   1        Timer0Init();
+  76   1        
+  77   1        
+  78   1      
+  79   1        while(1){
+  80   2        
+  81   2            
+  82   2          if(isrun==1){
+  83   3          LCD_ShowString(1,1,"RUN                         ");
+  84   3            temperature=AT24C02_ReadByte(2);
+  85   3            humidity=AT24C02_ReadByte(3);
+  86   3            SetNumber(temperature,humidity);
+  87   3          D3=0;
+  88   3          D4=1;
+  89   3          D5=1;
+  90   3        }else if(isrun==2){
+  91   3          LCD_ShowString(1,1,"Setting                     ");
+  92   3          LCD_ShowString(2,1,"Please set up               ");
+  93   3          D3=1;
+  94   3          D4=0;
+  95   3          D5=1;
+  96   3        }else if(isrun==3){
+  97   3          LCD_ShowString(1,1,"STOP                        ");
+  98   3          LCD_ShowString(2,1,"                            ");
+  99   3          D3=1;
+ 100   3          D4=1;
+ 101   3          D5=0;
+ 102   3        }
+ 103   2          //按下按键反馈
+ 104   2          keynumber=MatrixKey();
+ 105   2          if(keynumber>=1&&keynumber<=12){
+ 106   3          sprintf(num,"%d",keynumber);
+ 107   3          //通过串口发送
+ 108   3          strcat(Kstr,num);
+ 109   3            UARE_SendString(Kstr);
+ 110   3            //LCD_ShowString(2,1,Kstr);
+ 111   3          
+ 112   3            //初始化
+ 113   3          Kstr[0]='K';
+ 114   3          Kstr[1]=':';
+ 115   3          Kstr[2]='\0';
+ 116   3          }
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 3   
+
+ 117   2        }
+ 118   1      }
+ 119          
+ 120          
+ 121          
+ 122          
+ 123          int left=0,thisleft=0;
+ 124          void Time0_DaoL() interrupt 1{ 
+ 125   1         
+ 126   1          static unsigned int T0count=0;
+ 127   1        
+ 128   1        int ii=0;
+ 129   1        TL0 = 0x18;   //设置定时初值
+ 130   1        TH0 = 0xFC;   //设置定时初值
+ 131   1        
+ 132   1        
+ 133   1        T0count++;
+ 134   1        
+ 135   1        
+ 136   1        
+ 137   1      //定时器  滚动字幕
+ 138   1      
+ 139   1        /*if(T0count%500==0){
+ 140   1          sprintf(strline2,"imitate:temperature %d centigrade,humidity %d% environment temperature %f centigrade!"
+             -,temperature,humidity,T);
+ 141   1        if(thisleft>=LINE2SIZE)
+ 142   1        {thisleft=0;}
+ 143   1        else{left=thisleft++;}
+ 144   1        
+ 145   1          for(ii=0;ii<16;ii++){
+ 146   1            if(left>=LINE2SIZE){
+ 147   1              endprint[ii]=' ';
+ 148   1                continue;
+ 149   1            }
+ 150   1              endprint[ii]=strline2[left++];
+ 151   1            
+ 152   1          }
+ 153   1          LCD_ShowString(2,1,endprint);
+ 154   1      
+ 155   1        }*/
+ 156   1        
+ 157   1        //定时器 温度自动发送
+ 158   1        if(T0count>=3800){
+ 159   2          DS18B20_ConverT();
+ 160   2          Delayms(20);
+ 161   2          T=DS18B20_ReadT();
+ 162   2          //将T转换成字符串
+ 163   2          sprintf(str,"%f",T);
+ 164   2          //通过串口发送
+ 165   2          strcat(tstr,str);
+ 166   2          UARE_SendString(tstr);
+ 167   2          //LCD_ShowString(1,1,tstr);
+ 168   2          
+ 169   2          //for(i=0;i<8;i++){
+ 170   2            //tstr[i]="";
+ 171   2          //}
+ 172   2          
+ 173   2          //初始化
+ 174   2          tstr[0]='T';
+ 175   2          tstr[1]=':';
+ 176   2          tstr[2]='\0';
+ 177   2          T0count=0;
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 4   
+
+ 178   2        }
+ 179   1          
+ 180   1      }
+ 181          
+ 182          
+ 183          //定时器 PC指令控制
+ 184          void UART_Routine() interrupt 4{//触发4号中断
+ 185   1        
+ 186   1        static int i = 0;//静态变量，只初始化一次
+ 187   1      
+ 188   1        if(RI){
+ 189   2          cmd[i] = SBUF;
+ 190   2          i++;
+ 191   2          if(i == SIZE){
+ 192   3            i=0;
+ 193   3          }
+ 194   2          
+ 195   2              //判断CMD是否包含
+ 196   2          if(strstr(cmd,"c")&&i>=3){
+ 197   3            
+ 198   3            if(cmd[2]=='1'){
+ 199   4              AT24C02_WriteByte(1,1);
+ 200   4              isrun=1;
+ 201   4            }else if(cmd[2]=='2'){
+ 202   4            AT24C02_WriteByte(1,2);
+ 203   4              isrun=2;
+ 204   4            }else if(cmd[2]=='3'){
+ 205   4            AT24C02_WriteByte(1,3);
+ 206   4              isrun=3;
+ 207   4            }
+ 208   3            Delayms(5);
+ 209   3            
+ 210   3            UARE_SendString("c ok");
+ 211   3            i=0;
+ 212   3            
+ 213   3            memset(cmd,'\0',SIZE);//清空数组，方便接收下一条指令
+ 214   3          
+ 215   3          
+ 216   3          }
+ 217   2          else if(strstr(cmd,"t") && i>=4){
+ 218   3            int temp;
+ 219   3            temp =convertToInt(cmd);
+ 220   3            
+ 221   3            
+ 222   3            //if(temperature==0)UARE_SendString("t error");
+ 223   3            if(temp!=0){
+ 224   4              
+ 225   4            AT24C02_WriteByte(2,temp);
+ 226   4            Delayms(5);
+ 227   4            UARE_SendString("t ok");
+ 228   4            }
+ 229   3        
+ 230   3            
+ 231   3            i=0;
+ 232   3            memset(cmd,'\0',SIZE);
+ 233   3            
+ 234   3          }
+ 235   2          else if(strstr(cmd,"h") && i>=4){
+ 236   3            int temp2;
+ 237   3            temp2 =convertToInt(cmd);
+ 238   3            
+ 239   3            
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 5   
+
+ 240   3            //if(temperature==0)UARE_SendString("t error");
+ 241   3            if(temp2!=0){
+ 242   4              
+ 243   4            AT24C02_WriteByte(3,temp2);
+ 244   4            Delayms(5);
+ 245   4            UARE_SendString("h ok");
+ 246   4            }
+ 247   3        
+ 248   3            
+ 249   3            i=0;
+ 250   3            memset(cmd,'\0',SIZE);
+ 251   3            
+ 252   3          }
+ 253   2          //else if(strstr(cmd,"E") && i>=1){
+ 254   2            //  sprintf(send,"E-%d",temperature);
+ 255   2          //
+ 256   2            //UARE_SendString(send);  
+ 257   2          //    i=0;
+ 258   2          //  memset(cmd,'\0',SIZE);
+ 259   2          //}
+ 260   2          /*else if(strstr(cmd,"H")){
+ 261   2              sprintf(send,"H-%d",humidity);
+ 262   2                  
+ 263   2            UARE_SendString(send);
+ 264   2              i=0;
+ 265   2            memset(cmd,'\0',SIZE);
+ 266   2          }
+ 267   2          else if(strstr(cmd,"C")){
+ 268   2              sprintf(send,"C-%d",isrun);
+ 269   2                
+ 270   2            UARE_SendString(send);  
+ 271   2              i=0;
+ 272   2            memset(cmd,'\0',SIZE);
+ 273   2          } */
+ 274   2          RI = 0;//复位接收中断标志
+ 275   2        }
+ 276   1        
+ 277   1      } 
+ 278          
+ 279          void SetNumber(int t,int h){
+ 280   1        LCD_ShowString(2,1,"T:");
+ 281   1        LCD_ShowNum(2,3,t,2);
+ 282   1        LCD_ShowString(2,5,"  ");
+ 283   1          LCD_ShowString(2,7,"H:");
+ 284   1          LCD_ShowNum(2,9,h,2);
+ 285   1        LCD_ShowString(2,11,"               ");
+ 286   1      }
+ 287          
+ 288          
+ 289          int convertToInt(const char *str) {
+ 290   1          // 查找冒号的位置
+ 291   1          const char *colon = strchr(str, ':');
+ 292   1          if (colon != NULL) {
+ 293   2              // 将冒号后面的字符串转换为整数
+ 294   2              return atoi(colon + 1);
+ 295   2          }
+ 296   1          // 如果没有找到冒号，返回0或者错误代码
+ 297   1          return 0;
+ 298   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+C51 COMPILER V9.54   MAIN                                                                  12/05/2023 23:15:34 PAGE 6   
+
+   CODE SIZE        =   1107    ----
+   CONSTANT SIZE    =    197    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =     53      11
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

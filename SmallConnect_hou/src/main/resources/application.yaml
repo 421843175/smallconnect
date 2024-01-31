@@ -1,0 +1,11 @@
+server:
+  port: 8088
+spring:
+  datasource:
+    url: jdbc:mysql://101.43.171.39:3306/smallconnect?serverTimezone=UTC&zeroDateTimeBehavior=CONVERT_TO_NULL
+    username: root
+    password: "jupiter0216"
+    driver-class-name: com.mysql.jdbc.Driver
+
+julog:
+  logpath: D:\procredata\smallconnect.julog

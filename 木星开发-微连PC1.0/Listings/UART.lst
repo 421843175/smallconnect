@@ -1,0 +1,81 @@
+C51 COMPILER V9.54   UART                                                                  12/05/2023 13:53:08 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN .\Objects\UART.obj
+COMPILER INVOKED BY: E:\software\Keil_v5\C51\BIN\C51.EXE UART.c COMPACT ROM(COMPACT) OPTIMIZE(8,SPEED) BROWSE DEBUG OBJE
+                    -CTEXTEND PRINT(.\Listings\UART.lst) TABS(2) OBJECT(.\Objects\UART.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "Delay.h"
+   3          
+   4          //初始化串口
+   5          /**
+   6            * @brief 串口初始化 4800bps@12.000MHz
+   7            * @param
+   8            * @retval
+   9          */
+  10          void UART_Init(){  
+  11   1        SCON=0x50; //0100 0000  确定SM工作方式 0x50才能接收
+  12   1        PCON |= 0x80;
+  13   1        //串口需要使用定时器1 8位自动重装
+  14   1        TMOD &= 0x0F;   //清除定时器1模式位
+  15   1        TMOD |= 0x20;   //设定定时器1为8位自动重装方式
+  16   1        TL1 = 0xF3;   //设定定时初值
+  17   1        TH1 = 0xF3;   //设定定时器重装值
+  18   1        ET1 = 0;    //禁止定时器1中断
+  19   1        TR1 = 1;    //启动定时器1
+  20   1        EA=1; //启动中断
+  21   1        ES=1; //启动串口中断
+  22   1      }
+  23          
+  24          /**
+  25            * @brief 串口发送一个字节数据
+  26            * @param 要发送的字节数据
+  27            * @retval
+  28          */
+  29          void UARE_SendByte(unsigned char byte){
+  30   1        //只要写到SBUF 因为波特率和定时器都配置完了 所以会自动发
+  31   1        SBUF=byte;
+  32   1        while(TI==0);  //TI是0的时候一直循环 当TI不是0 需要手动复位
+  33   1        TI=0;
+  34   1      }
+  35          
+  36          void UARE_SendString(unsigned char * s){
+  37   1        while(*s){
+  38   2          SBUF=*s;
+  39   2          while(TI==0);
+  40   2          TI=0;
+  41   2          s++;
+  42   2        }
+  43   1      }
+  44          
+  45          /*发送数据模板
+  46          void UART_Routine() interrupt 4{//触发4号中断
+  47            //发送中断
+  48            if(RI==1){
+  49              P2=~SBUF;
+  50              //复位
+  51              RI=0;
+  52            }
+  53          } 
+  54          */
+C51 COMPILER V9.54   UART                                                                  12/05/2023 13:53:08 PAGE 2   
+
+  55          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     57    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
